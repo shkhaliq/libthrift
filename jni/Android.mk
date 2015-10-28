@@ -14,11 +14,10 @@ BOOST_ROOT := $(INCLUDE_PATH)/../boost
 endif
 
 THRIFT_SRC_FILES := \
-    $(SRC_PATH)/Thrift.cpp \
-    $(SRC_PATH)/VirtualProfiling.cpp \
-    $(SRC_PATH)/TApplicationException.cpp \
-    $(SRC_PATH)/async/TAsyncChannel.cpp \
-    $(SRC_PATH)/async/TAsyncProtocolProcessor.cpp \
+    $(wildcard $(SRC_DIR)/*.cpp) \
+    $(wildcard $(SRC_DIR)/async/*.cpp) \
+    #$(SRC_PATH)/async/TAsyncChannel.cpp \
+    #$(SRC_PATH)/async/TAsyncProtocolProcessor.cpp \
     $(SRC_PATH)/processor/PeekProcessor.cpp \
     $(SRC_PATH)/transport/TSocket.cpp \
     $(SRC_PATH)/transport/TTransportException.cpp \
@@ -63,7 +62,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := thrift_shared
 
-LOCAL_C_INCLUDES := $(INCLUDE_PATH) $(BOOST_ROOT)
+LOCAL_C_INCLUDES := $(INCLUDE_PATH) $(BOOST_ROOT) $(LOCAL_PATH)/../../
 
 LOCAL_MODULE_FILENAME := $(THRIFT_FILENAME)
 LOCAL_CPPFLAGS := $(THRIFT_CPPFLAGS)

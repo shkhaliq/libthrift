@@ -20,28 +20,24 @@
 #ifndef _THRIFT_TRANSPORT_TFILETRANSPORT_H_
 #define _THRIFT_TRANSPORT_TFILETRANSPORT_H_ 1
 
-#include "TTransport.h"
-#include "Thrift.h"
-#include "TProcessor.h"
+#include <thrift/transport/TTransport.h>
+#include <thrift/Thrift.h>
+#include <thrift/TProcessor.h>
 
 #include <string>
 #include <stdio.h>
 
-#ifdef HAVE_PTHREAD_H
-#include <pthread.h>
-#endif
-
-#ifdef USE_BOOST_THREAD
-#include <boost/thread.hpp>
-#endif
-
 #include <boost/scoped_ptr.hpp>
 #include <boost/shared_ptr.hpp>
 
-#include "concurrency/Mutex.h"
-#include "concurrency/Monitor.h"
+#include <thrift/concurrency/Mutex.h>
+#include <thrift/concurrency/Monitor.h>
+#include <thrift/concurrency/PlatformThreadFactory.h>
+#include <thrift/concurrency/Thread.h>
 
-namespace apache { namespace thrift { namespace transport {
+namespace apache {
+namespace thrift {
+namespace transport {
 
 using apache::thrift::TProcessor;
 using apache::thrift::protocol::TProtocolFactory;
@@ -54,7 +50,7 @@ typedef struct eventInfo {
   uint32_t eventSize_;
   uint32_t eventBuffPos_;
 
-  eventInfo():eventBuff_(NULL), eventSize_(0), eventBuffPos_(0){};
+  eventInfo() : eventBuff_(NULL), eventSize_(0), eventBuffPos_(0){};
   ~eventInfo() {
     if (eventBuff_) {
       delete[] eventBuff_;
@@ -67,13 +63,13 @@ typedef struct readState {
   eventInfo* event_;
 
   // keep track of event size
-  uint8_t   eventSizeBuff_[4];
-  uint8_t   eventSizeBuffPos_;
-  bool      readingSize_;
+  uint8_t eventSizeBuff_[4];
+  uint8_t eventSizeBuffPos_;
+  bool readingSize_;
 
   // read buffer variables
-  int32_t  bufferPtr_;
-  int32_t  bufferLen_;
+  int32_t bufferPtr_;
+  int32_t bufferLen_;
 
   // last successful dispatch point
   int32_t lastDispatchPtr_;
@@ -89,19 +85,24 @@ typedef struct readState {
     bufferPtr_ = 0;
     bufferLen_ = 0;
     if (event_) {
-      delete(event_);
+      delete (event_);
     }
     event_ = 0;
   }
 
+  inline uint32_t getEventSize() {
+    const void* buffer = reinterpret_cast<const void*>(eventSizeBuff_);
+    return *reinterpret_cast<const uint32_t*>(buffer);
+  }
+
   readState() {
     event_ = 0;
-   resetAllValues();
+    resetAllValues();
   }
 
   ~readState() {
     if (event_) {
-      delete(event_);
+      delete (event_);
     }
   }
 
@@ -122,36 +123,33 @@ typedef struct readState {
  *
  */
 class TFileTransportBuffer {
-  public:
-    TFileTransportBuffer(uint32_t size);
-    ~TFileTransportBuffer();
+public:
+  TFileTransportBuffer(uint32_t size);
+  ~TFileTransportBuffer();
 
-    bool addEvent(eventInfo *event);
-    eventInfo* getNext();
-    void reset();
-    bool isFull();
-    bool isEmpty();
+  bool addEvent(eventInfo* event);
+  eventInfo* getNext();
+  void reset();
+  bool isFull();
+  bool isEmpty();
 
-  private:
-    TFileTransportBuffer(); // should not be used
+private:
+  TFileTransportBuffer(); // should not be used
 
-    enum mode {
-      WRITE,
-      READ
-    };
-    mode bufferMode_;
+  enum mode { WRITE, READ };
+  mode bufferMode_;
 
-    uint32_t writePoint_;
-    uint32_t readPoint_;
-    uint32_t size_;
-    eventInfo** buffer_;
+  uint32_t writePoint_;
+  uint32_t readPoint_;
+  uint32_t size_;
+  eventInfo** buffer_;
 };
 
 /**
  * Abstract interface for transports used to read files
  */
 class TFileReaderTransport : virtual public TTransport {
- public:
+public:
   virtual int32_t getReadTimeout() = 0;
   virtual void setReadTimeout(int32_t readTimeout) = 0;
 
@@ -165,7 +163,7 @@ class TFileReaderTransport : virtual public TTransport {
  * Abstract interface for transports used to write files
  */
 class TFileWriterTransport : virtual public TTransport {
- public:
+public:
   virtual uint32_t getChunkSize() = 0;
   virtual void setChunkSize(uint32_t chunkSize) = 0;
 };
@@ -175,17 +173,14 @@ class TFileWriterTransport : virtual public TTransport {
  * file on disk.
  *
  */
-class TFileTransport : public TFileReaderTransport,
-                       public TFileWriterTransport {
- public:
-  TFileTransport(std::string path, bool readOnly=false);
+class TFileTransport : public TFileReaderTransport, public TFileWriterTransport {
+public:
+  TFileTransport(std::string path, bool readOnly = false);
   ~TFileTransport();
 
   // TODO: what is the correct behaviour for this?
   // the log file is generally always open
-  bool isOpen() {
-    return true;
-  }
+  bool isOpen() { return true; }
 
   void write(const uint8_t* buf, uint32_t len);
   void flush();
@@ -201,7 +196,7 @@ class TFileTransport : public TFileReaderTransport,
   uint32_t getCurChunk();
 
   // for changing the output file
-  void resetOutputFile(int fd, std::string filename, int64_t offset);
+  void resetOutputFile(int fd, std::string filename, off_t offset);
 
   // Setter/Getter functions for user-controllable options
   void setReadBuffSize(uint32_t readBuffSize) {
@@ -209,27 +204,19 @@ class TFileTransport : public TFileReaderTransport,
       readBuffSize_ = readBuffSize;
     }
   }
-  uint32_t getReadBuffSize() {
-    return readBuffSize_;
-  }
+  uint32_t getReadBuffSize() { return readBuffSize_; }
 
   static const int32_t TAIL_READ_TIMEOUT = -1;
   static const int32_t NO_TAIL_READ_TIMEOUT = 0;
-  void setReadTimeout(int32_t readTimeout) {
-    readTimeout_ = readTimeout;
-  }
-  int32_t getReadTimeout() {
-    return readTimeout_;
-  }
+  void setReadTimeout(int32_t readTimeout) { readTimeout_ = readTimeout; }
+  int32_t getReadTimeout() { return readTimeout_; }
 
   void setChunkSize(uint32_t chunkSize) {
     if (chunkSize) {
       chunkSize_ = chunkSize;
     }
   }
-  uint32_t getChunkSize() {
-    return chunkSize_;
-  }
+  uint32_t getChunkSize() { return chunkSize_; }
 
   void setEventBufferSize(uint32_t bufferSize) {
     if (bufferAndThreadInitialized_) {
@@ -239,76 +226,56 @@ class TFileTransport : public TFileReaderTransport,
     eventBufferSize_ = bufferSize;
   }
 
-  uint32_t getEventBufferSize() {
-    return eventBufferSize_;
-  }
+  uint32_t getEventBufferSize() { return eventBufferSize_; }
 
   void setFlushMaxUs(uint32_t flushMaxUs) {
     if (flushMaxUs) {
       flushMaxUs_ = flushMaxUs;
     }
   }
-  uint32_t getFlushMaxUs() {
-    return flushMaxUs_;
-  }
+  uint32_t getFlushMaxUs() { return flushMaxUs_; }
 
   void setFlushMaxBytes(uint32_t flushMaxBytes) {
     if (flushMaxBytes) {
       flushMaxBytes_ = flushMaxBytes;
     }
   }
-  uint32_t getFlushMaxBytes() {
-    return flushMaxBytes_;
-  }
+  uint32_t getFlushMaxBytes() { return flushMaxBytes_; }
 
-  void setMaxEventSize(uint32_t maxEventSize) {
-    maxEventSize_ = maxEventSize;
-  }
-  uint32_t getMaxEventSize() {
-    return maxEventSize_;
-  }
+  void setMaxEventSize(uint32_t maxEventSize) { maxEventSize_ = maxEventSize; }
+  uint32_t getMaxEventSize() { return maxEventSize_; }
 
   void setMaxCorruptedEvents(uint32_t maxCorruptedEvents) {
     maxCorruptedEvents_ = maxCorruptedEvents;
   }
-  uint32_t getMaxCorruptedEvents() {
-    return maxCorruptedEvents_;
-  }
+  uint32_t getMaxCorruptedEvents() { return maxCorruptedEvents_; }
 
   void setEofSleepTimeUs(uint32_t eofSleepTime) {
     if (eofSleepTime) {
       eofSleepTime_ = eofSleepTime;
     }
   }
-  uint32_t getEofSleepTimeUs() {
-    return eofSleepTime_;
-  }
+  uint32_t getEofSleepTimeUs() { return eofSleepTime_; }
 
   /*
    * Override TTransport *_virt() functions to invoke our implementations.
    * We cannot use TVirtualTransport to provide these, since we need to inherit
    * virtually from TTransport.
    */
-  virtual uint32_t read_virt(uint8_t* buf, uint32_t len) {
-    return this->read(buf, len);
-  }
-  virtual uint32_t readAll_virt(uint8_t* buf, uint32_t len) {
-    return this->readAll(buf, len);
-  }
-  virtual void write_virt(const uint8_t* buf, uint32_t len) {
-    this->write(buf, len);
-  }
+  virtual uint32_t read_virt(uint8_t* buf, uint32_t len) { return this->read(buf, len); }
+  virtual uint32_t readAll_virt(uint8_t* buf, uint32_t len) { return this->readAll(buf, len); }
+  virtual void write_virt(const uint8_t* buf, uint32_t len) { this->write(buf, len); }
 
- private:
+private:
   // helper functions for writing to a file
   void enqueueEvent(const uint8_t* buf, uint32_t eventLen);
-  bool swapEventBuffers(struct timespec* deadline);
+  bool swapEventBuffers(struct timeval* deadline);
   bool initBufferAndWriteThread();
 
   // control for writer thread
   static void* startWriterThread(void* ptr) {
-    (((TFileTransport*)ptr)->writerThread());
-    return 0;
+    static_cast<TFileTransport*>(ptr)->writerThread();
+    return NULL;
   }
   void writerThread();
 
@@ -321,7 +288,7 @@ class TFileTransport : public TFileReaderTransport,
 
   // Utility functions
   void openLogFile();
-  void getNextFlushTime(struct timespec* ts_next_flush);
+  void getNextFlushTime(struct timeval* ts_next_flush);
 
   // Class variables
   readState readState_;
@@ -370,17 +337,14 @@ class TFileTransport : public TFileReaderTransport,
   uint32_t writerThreadIOErrorSleepTime_;
   static const uint32_t DEFAULT_WRITER_THREAD_SLEEP_TIME_US = 60 * 1000 * 1000;
 
-  // writer thread id
-#ifdef USE_BOOST_THREAD
-	std::auto_ptr<boost::thread> writerThreadId_;
-#else
-	pthread_t writerThreadId_;
-#endif
+  // writer thread
+  apache::thrift::concurrency::PlatformThreadFactory threadFactory_;
+  boost::shared_ptr<apache::thrift::concurrency::Thread> writerThread_;
 
   // buffers to hold data before it is flushed. Each element of the buffer stores a msg that
   // needs to be written to the file.  The buffers are swapped by the writer thread.
-  TFileTransportBuffer *dequeueBuffer_;
-  TFileTransportBuffer *enqueueBuffer_;
+  TFileTransportBuffer* dequeueBuffer_;
+  TFileTransportBuffer* enqueueBuffer_;
 
   // conditions used to block when the buffer is full or empty
   Monitor notFull_, notEmpty_;
@@ -412,15 +376,13 @@ class TFileTransport : public TFileReaderTransport,
 
 // Exception thrown when EOF is hit
 class TEOFException : public TTransportException {
- public:
-  TEOFException():
-    TTransportException(TTransportException::END_OF_FILE) {};
+public:
+  TEOFException() : TTransportException(TTransportException::END_OF_FILE){};
 };
-
 
 // wrapper class to process events from a file containing thrift events
 class TFileProcessor {
- public:
+public:
   /**
    * Constructor that defaults output transport to null transport
    *
@@ -464,15 +426,15 @@ class TFileProcessor {
    */
   void processChunk();
 
- private:
+private:
   boost::shared_ptr<TProcessor> processor_;
   boost::shared_ptr<TProtocolFactory> inputProtocolFactory_;
   boost::shared_ptr<TProtocolFactory> outputProtocolFactory_;
   boost::shared_ptr<TFileReaderTransport> inputTransport_;
   boost::shared_ptr<TTransport> outputTransport_;
 };
-
-
-}}} // apache::thrift::transport
+}
+}
+} // apache::thrift::transport
 
 #endif // _THRIFT_TRANSPORT_TFILETRANSPORT_H_

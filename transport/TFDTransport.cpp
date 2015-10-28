@@ -20,7 +20,8 @@
 #include <cerrno>
 #include <exception>
 
-#include <transport/TFDTransport.h>
+#include <thrift/transport/TFDTransport.h>
+#include <thrift/transport/PlatformSocket.h>
 
 #ifdef HAVE_UNISTD_H
 #include <unistd.h>
@@ -32,21 +33,21 @@
 
 using namespace std;
 
-namespace apache { namespace thrift { namespace transport {
+namespace apache {
+namespace thrift {
+namespace transport {
 
 void TFDTransport::close() {
   if (!isOpen()) {
     return;
   }
 
-  int rv = ::close(fd_);
-  int errno_copy = errno;
+  int rv = ::THRIFT_CLOSE(fd_);
+  int errno_copy = THRIFT_ERRNO;
   fd_ = -1;
   // Have to check uncaught_exception because this is called in the destructor.
   if (rv < 0 && !std::uncaught_exception()) {
-    throw TTransportException(TTransportException::UNKNOWN,
-                              "TFDTransport::close()",
-                              errno_copy);
+    throw TTransportException(TTransportException::UNKNOWN, "TFDTransport::close()", errno_copy);
   }
 }
 
@@ -54,39 +55,39 @@ uint32_t TFDTransport::read(uint8_t* buf, uint32_t len) {
   unsigned int maxRetries = 5; // same as the TSocket default
   unsigned int retries = 0;
   while (true) {
-    ssize_t rv = ::read(fd_, buf, len);
+    THRIFT_SSIZET rv = ::THRIFT_READ(fd_, buf, len);
     if (rv < 0) {
-      if (errno == EINTR && retries < maxRetries) {
+      if (THRIFT_ERRNO == THRIFT_EINTR && retries < maxRetries) {
         // If interrupted, try again
         ++retries;
         continue;
       }
-      int errno_copy = errno;
-      throw TTransportException(TTransportException::UNKNOWN,
-                                "TFDTransport::read()",
-                                errno_copy);
+      int errno_copy = THRIFT_ERRNO;
+      throw TTransportException(TTransportException::UNKNOWN, "TFDTransport::read()", errno_copy);
     }
-    return rv;
+    // this should be fine, since we already checked for negative values,
+    // and ::read should only return a 32-bit value since len is 32-bit.
+    return static_cast<uint32_t>(rv);
   }
 }
 
 void TFDTransport::write(const uint8_t* buf, uint32_t len) {
   while (len > 0) {
-    ssize_t rv = ::write(fd_, buf, len);
+    THRIFT_SSIZET rv = ::THRIFT_WRITE(fd_, buf, len);
 
     if (rv < 0) {
-      int errno_copy = errno;
-      throw TTransportException(TTransportException::UNKNOWN,
-                                "TFDTransport::write()",
-                                errno_copy);
+      int errno_copy = THRIFT_ERRNO;
+      throw TTransportException(TTransportException::UNKNOWN, "TFDTransport::write()", errno_copy);
     } else if (rv == 0) {
-      throw TTransportException(TTransportException::END_OF_FILE,
-                                "TFDTransport::write()");
+      throw TTransportException(TTransportException::END_OF_FILE, "TFDTransport::write()");
     }
 
     buf += rv;
-    len -= rv;
+    // this should be fine, as we've already checked for negative values, and
+    //::write shouldn't return more than a uint32_t since len is a uint32_t
+    len -= static_cast<uint32_t>(rv);
   }
 }
-
-}}} // apache::thrift::transport
+}
+}
+} // apache::thrift::transport
