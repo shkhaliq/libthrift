@@ -1,5 +1,5 @@
 #
-# Thrift 0.8.0 static and shared C++ libraries
+# Thrift 0.9.3 static and shared C++ libraries
 #
 
 LOCAL_PATH := $(call my-dir)
