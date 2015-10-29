@@ -17,10 +17,12 @@
  * under the License.
  */
 
+#define __STDC_LIMIT_MACROS
 #include <boost/bind.hpp>
 #include <stdexcept>
 #include <stdint.h>
 #include <thrift/server/TServerFramework.h>
+#include <cstdint>
 
 namespace apache {
 namespace thrift {
