@@ -42,15 +42,6 @@ THRIFT_SRC_FILES := \
     $(SRC_PATH)/concurrency/Monitor.cpp \
     $(SRC_PATH)/concurrency/Mutex.cpp \
     $(SRC_PATH)/concurrency/PosixThreadFactory.cpp \
-    $(SRC_PATH)/concurrency/StdMonitor.cpp \
-    $(SRC_PATH)/concurrency/StdMutex.cpp \
-    $(SRC_PATH)/concurrency/StdThreadFactory.cpp \
-    $(SRC_PATH)/concurrency/ThreadManager.cpp \
-    $(SRC_PATH)/concurrency/TimerManager.cpp \
-    $(SRC_PATH)/concurrency/Util.cpp \
-    $(SRC_PATH)/server/TConnectedClient.cpp \
-    $(SRC_PATH)/server/TServer.cpp \
-    $(SRC_PATH)/server/TServerFramework.cpp \
     $(SRC_PATH)/server/TSimpleServer.cpp \
     $(SRC_PATH)/server/TThreadedServer.cpp \
     $(SRC_PATH)/server/TThreadPoolServer.cpp
