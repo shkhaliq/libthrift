@@ -22,6 +22,7 @@ THRIFT_SRC_FILES := \
     $(SRC_PATH)/concurrency/TimerManager.cpp \
     $(SRC_PATH)/concurrency/Util.cpp \
     $(SRC_PATH)/concurrency/StdThreadFactory.cpp \
+    $(SRC_PATH)/concurrency/PosixThreadFactory.cpp \
     $(SRC_PATH)/concurrency/StdMutex.cpp \
     $(SRC_PATH)/concurrency/StdMonitor.cpp \
     $(SRC_PATH)/processor/PeekProcessor.cpp \
@@ -45,7 +46,7 @@ THRIFT_SRC_FILES := \
     $(SRC_PATH)/server/TConnectedClient.cpp \
     $(SRC_PATH)/server/TServerFramework.cpp \
     $(SRC_PATH)/server/TSimpleServer.cpp \
-    $(SRC_PATH)/server/TThreadPoolServer.cpp
+    $(SRC_PATH)/server/TThreadPoolServer.cpp \
     $(SRC_PATH)/server/TThreadedServer.cpp \
 
     # not supported yet
@@ -84,7 +85,7 @@ include $(CLEAR_VARS)
 
 LOCAL_MODULE := thrift_static
 
-LOCAL_C_INCLUDES := $(INCLUDE_PATH) $(BOOST_ROOT)
+LOCAL_C_INCLUDES := $(INCLUDE_PATH) $(BOOST_ROOT) $(LOCAL_PATH)/../../
 
 LOCAL_MODULE_FILENAME := $(THRIFT_FILENAME)
 LOCAL_CPPFLAGS := $(THRIFT_CPPFLAGS)
